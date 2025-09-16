@@ -18,7 +18,7 @@ ASFLAGS = -Iinclude
 LDFLAGS = -z max-page-size=4096
 
 # 源文件
-OBJS = kernel/entry.o kernel/main.o kernel/uart.o
+OBJS = kernel/entry.o kernel/main.o kernel/uart.o kernel/printf.o kernel/console.o
 
 # 目标文件
 TARGET = kernel.elf
@@ -28,7 +28,7 @@ all: $(TARGET)
 
 # 编译规则
 %.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	 $(CC) $(CFLAGS) -c $< -o $@
 
 %.o: %.S
 	$(CC) $(ASFLAGS) -c $< -o $@
@@ -66,6 +66,5 @@ help:
 	@echo "  qemu-gdb - Run kernel with GDB support"
 	@echo "  dump     - Generate disassembly"
 	@echo "  info     - Show ELF sections"
-	@echo "  clean    - Clean build files"
-
+	@echo "  clean    - Clean build files"	
 .PHONY: all clean qemu qemu-gdb dump info help
