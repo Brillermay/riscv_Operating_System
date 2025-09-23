@@ -10,8 +10,11 @@ SECTIONS
     .text : {
         *(.text.init)   /* 启动代码放在最前面 */
         *(.text)
-        . = ALIGN(4096);
+        *(.text.*)
     }
+    etext = .; 
+    
+    . = ALIGN(4096);
     
     /* 只读数据段 */
     .rodata : {
