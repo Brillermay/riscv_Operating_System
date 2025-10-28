@@ -1,7 +1,10 @@
+// filepath: /home/bri/Desktop/riscv-os/riscv_Operating_System/kernel/main.c
 #include "printf.h"
 #include "pmm.h"
 #include "vmm.h"
 #include "uart.h"
+#include "trap.h"   // 新增：启用中断初始化
+
 void test_physical_memory(void) {
     printf("\n=== Testing Physical Memory Allocator ===\n");
     void *p1 = alloc_page();
@@ -44,14 +47,23 @@ void main(void) {
     kvminit();
     kvminithart();
     
-    /* 启用分页后，所有代码都在虚拟地址上运行 */
     printf("\n");
     printf_color(COLOR_GREEN, "Paging enabled successfully!\n");
     printf("Now running on virtual addresses.\n");
+
+    /* 启用中断与时钟 */
+    trap_init();
+    printf("Timer interrupt initialized. ticks=%lu\n", (unsigned long)ticks);
+
     printf("System ready. Entering idle loop...\n");
     
     /* 主循环 */
     while (1) {
+        static uint64 last = 0;
+        if (ticks - last >= 10) {
+            last = ticks;
+            printf("[timer] ticks=%lu, mtime=%lu\n", (unsigned long)ticks, (unsigned long)get_time());
+        }
         __asm__ volatile ("wfi");
     }
 }

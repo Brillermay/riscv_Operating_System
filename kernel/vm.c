@@ -93,11 +93,32 @@ void kvminit(void) {
 
     // 映射内核代码段 (R+X)
     printf("kvminit: mapping kernel text...\n");
-    map_region(kernel_pagetable, KERNBASE, KERNBASE, (uint64_t)etext - KERNBASE, PTE_R | PTE_X);
+    /* 确保映射大小按页对齐，覆盖到 etext 所在页 */
+    uint64_t text_start = KERNBASE;
+    uint64_t text_end = (uint64_t)etext;
+    uint64_t text_size = 0;
+    if (text_end > text_start) {
+        text_size = PGROUNDUP(text_end - text_start);
+    }
+    if (text_size > 0) {
+        if (map_region(kernel_pagetable, text_start, KERNBASE, text_size, PTE_R | PTE_X) != 0) {
+            printf("kvminit: failed to map kernel text\n");
+            return;
+        }
+    }
 
     // 映射内核数据段和剩余物理内存 (R+W)
     printf("kvminit: mapping kernel data and physical memory...\n");
-    map_region(kernel_pagetable, (uint64_t)etext, (uint64_t)etext, PHYSTOP - (uint64_t)etext, PTE_R | PTE_W);
+    /* 数据段从 etext 向上取页对齐开始 */
+    uint64_t data_pa = PGROUNDUP(text_end);
+    uint64_t data_va = data_pa;
+    if (data_pa < PHYSTOP) {
+        uint64_t data_size = PHYSTOP - data_pa;
+        if (map_region(kernel_pagetable, data_va, data_pa, data_size, PTE_R | PTE_W) != 0) {
+            printf("kvminit: failed to map kernel data/phys memory\n");
+            return;
+        }
+    }
 
     printf("kvminit: kernel page table created.\n");
 }
