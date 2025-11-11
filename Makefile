@@ -17,8 +17,9 @@ ASFLAGS = -Iinclude
 # 链接选项
 LDFLAGS = -z max-page-size=4096
 
-# 源文件
-OBJS = kernel/entry.o kernel/main.o kernel/uart.o kernel/printf.o kernel/console.o kernel/kalloc.o kernel/vm.o kernel/trap.o kernel/kernelvec.o kernel/supervisorvec.o kernel/supervisortrap.o
+# 源文件对象列表：移除 supervisorvec.o 和 supervisortrap.o
+OBJS = kernel/entry.o kernel/main.o kernel/uart.o kernel/printf.o kernel/console.o kernel/kalloc.o kernel/vm.o kernel/trap.o kernel/kernelvec.o \
+       kernel/proc.o kernel/swtch.o
 
 # 目标文件
 TARGET = kernel.elf

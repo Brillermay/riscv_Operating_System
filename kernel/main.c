@@ -3,7 +3,26 @@
 #include "pmm.h"
 #include "vmm.h"
 #include "uart.h"
-#include "trap.h"   // 新增：启用中断初始化
+#include "trap.h"
+#include "proc.h"   /* 新增：process APIs */
+
+static void cpu_task(void) {
+    for (int i = 0; i < 5; i++) {
+        printf("[task %d] pid=%d loop=%d ticks=%lu\n", 1, myproc() ? myproc()->pid : -1, i, (unsigned long)ticks);
+        for (volatile int j = 0; j < 1000000; j++); /* 简单忙等 */
+        yield();
+    }
+    printf("[task] exiting pid=%d\n", myproc() ? myproc()->pid : -1);
+}
+
+/* 另一测试任务 */
+static void tcp_task(void) {
+    for (int i = 0; i < 3; i++) {
+        printf("[tcp] pid=%d iter=%d\n", myproc() ? myproc()->pid : -1, i);
+        yield();
+    }
+    exit_process(0);
+}
 
 void test_physical_memory(void) {
     printf("\n=== Testing Physical Memory Allocator ===\n");
@@ -39,8 +58,10 @@ void main(void) {
     /* 初始化物理内存管理器 */
     pmm_init();
     
-    /* 测试物理内存分配 */
+#if 0
+    /* 原来实验测试注释掉 */
     test_physical_memory();
+#endif
 
     /* 创建并激活内核页表 */
     printf("\n=== Enabling Virtual Memory ===\n");
@@ -51,19 +72,40 @@ void main(void) {
     printf_color(COLOR_GREEN, "Paging enabled successfully!\n");
     printf("Now running on virtual addresses.\n");
 
-    /* 启用中断与时钟 */
+    /* 启用中断与时钟（为调度器准备） */
     trap_init();
     printf("Timer interrupt initialized. ticks=%lu\n", (unsigned long)ticks);
 
-    printf("System ready. Entering idle loop...\n");
-    
-    /* 主循环 */
-    while (1) {
-        static uint64 last = 0;
-        if (ticks - last >= 10) {
-            last = ticks;
-            printf("[timer] ticks=%lu, mtime=%lu\n", (unsigned long)ticks, (unsigned long)get_time());
+    { 
+        /* -- 新增：实验四 中断测试（在进入调度器前的空闲打印） */
+        printf("System ready. Entering idle loop...\n");
+        uint64 last = ticks;
+        /* 打印到达到一定 ticks 为止，按你的示例打印到 250 */
+        while (ticks < 250) {
+            if (ticks - last >= 10) {
+                last = ticks;
+                printf("[timer] ticks=%lu, mtime=%lu\n",
+                       (unsigned long)ticks, (unsigned long)get_time());
+            }
+            /* 省电等待中断 */
+            __asm__ volatile("wfi");
         }
-        __asm__ volatile ("wfi");
+        printf("Idle timer test complete. Proceeding to process creation...\n");
     }
+
+    { 
+        /* 实验5启动标识 */
+        printf_color(COLOR_YELLOW, "\nExperiment 5: Process management & scheduling - START\n");
+
+        /* 创建测试进程 */
+        int pid1 = create_process(cpu_task);
+        int pid2 = create_process(tcp_task);
+        printf("Created processes pid=%d pid=%d\n", pid1, pid2);
+
+        /* 进入调度器（不会返回） */
+        scheduler();
+    }
+
+    /* 不会走到这里 */
+    for (;;) __asm__ volatile("wfi");
 }

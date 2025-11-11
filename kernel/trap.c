@@ -6,7 +6,7 @@
 
 volatile uint64 ticks = 0;
 
-extern void supervisorvec(void); // 新增：S-mode 向量入口
+// extern void supervisorvec(void); // 已移除：不再使用 S-mode 向量入口
 
 static void timer_set_next(uint64 interval){
     uint64 hart = r_mhartid();
@@ -52,12 +52,8 @@ uint64 get_time(void){
 
 void trap_init(void){
     extern void kernelvec(void);
-    // 新增：把 Supervisor Timer 中断委托给 S 模式 (STIP)
-    w_mideleg(r_mideleg() | MIDELEG_STIP);
-    // 新增：设置 S 模式的陷阱向量入口
-    w_stvec((uint64)supervisorvec);
 
-    // 设置 M-mode 陷阱向量（仍保留 M-mode 入口）
+    // 设置 M-mode 陷阱向量（保留 M-mode 入口）
     w_mtvec((uint64)kernelvec);
 
     // 先设置第一次定时器触发点，再开中断
