@@ -6,6 +6,9 @@
 #include "trap.h"
 #include "proc.h"   /* 新增：process APIs */
 
+/* 新增：demo 初始化函数原型（定义在 kernel/syscall_test.c）*/
+void syscall_demo_init(void);
+
 static void cpu_task(void) {
     for (int i = 0; i < 5; i++) {
         printf("[task %d] pid=%d loop=%d ticks=%lu\n", 1, myproc() ? myproc()->pid : -1, i, (unsigned long)ticks);
@@ -81,7 +84,7 @@ void main(void) {
         printf("System ready. Entering idle loop...\n");
         uint64 last = ticks;
         /* 打印到达到一定 ticks 为止，按你的示例打印到 250 */
-        while (ticks < 250) {
+        while (ticks < 50) {
             if (ticks - last >= 10) {
                 last = ticks;
                 printf("[timer] ticks=%lu, mtime=%lu\n",
@@ -101,6 +104,9 @@ void main(void) {
         int pid1 = create_process(cpu_task);
         int pid2 = create_process(tcp_task);
         printf("Created processes pid=%d pid=%d\n", pid1, pid2);
+
+        /* 创建系统调用演示进程（创建但演示任务会等待 ticks，保证输出在之前实验之后） */
+        syscall_demo_init();
 
         /* 进入调度器（不会返回） */
         scheduler();

@@ -19,7 +19,7 @@ LDFLAGS = -z max-page-size=4096
 
 # 源文件对象列表：移除 supervisorvec.o 和 supervisortrap.o
 OBJS = kernel/entry.o kernel/main.o kernel/uart.o kernel/printf.o kernel/console.o kernel/kalloc.o kernel/vm.o kernel/trap.o kernel/kernelvec.o \
-       kernel/proc.o kernel/swtch.o
+       kernel/proc.o kernel/swtch.o kernel/syscall.o kernel/syscall_test.o
 
 # 目标文件
 TARGET = kernel.elf

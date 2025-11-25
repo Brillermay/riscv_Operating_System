@@ -29,17 +29,14 @@ bss_done:
     li t1, 'P'
     sb t1, 0(t0)
     
-    # 跳转到C主函数
+    # 跳转到主程序
     call main
-    
-    # 如果main返回，进入死循环
+
 halt:
-    wfi
     j halt
 
-# 定义栈空间
 .section .bss
 .align 4
 stack_bottom:
-    .space 4096  # 4KB栈空间
+    .space 4096
 stack_top:

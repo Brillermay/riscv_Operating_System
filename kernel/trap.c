@@ -3,10 +3,9 @@
 #include "riscv.h"
 #include "printf.h"
 #include "uart.h"
+#include "syscall.h"
 
 volatile uint64 ticks = 0;
-
-// extern void supervisorvec(void); // 已移除：不再使用 S-mode 向量入口
 
 static void timer_set_next(uint64 interval){
     uint64 hart = r_mhartid();
@@ -15,33 +14,46 @@ static void timer_set_next(uint64 interval){
 }
 
 static void timer_interrupt(void){
-    // 递增节拍，设置下次触发
     ticks++;
     timer_set_next(TICK_INTERVAL);
-    // 此处可挂接调度器，例如：schedule()，此实验保留占位
 }
 
-void kerneltrap(void){
+/* 修改：kerneltrap 接收 saved 指针（由 kernelvec.S 放在 a0） */
+void kerneltrap(uint64 *saved){
     uint64 mcause = r_mcause();
-    // 最高位=1表示中断
     if (mcause >> 63){
-        uint64 code = mcause & 0xfff; // 原因码
-        if (code == 7){ // 机器定时器中断
+        uint64 code = mcause & 0xfff;
+        if (code == 7){
             timer_interrupt();
             return;
         }
-        // 其他中断类型（外部、软件）可扩展
         printf("Unhandled interrupt: code=%lu\n", (unsigned long)code);
         return;
-    }else{
-        // 异常处理（最小实现：报告并停止）
+    } else {
+        uint64 cause = mcause & 0xfff;
+        if (cause == 11) { /* ecall from M-mode */
+            /* DEBUG: dump saved a0..a7 before dispatch */
+            printf("[dbg] saved[8..15]:");
+            for (int i = 8; i <= 15; i++) {
+                printf(" %llx", (unsigned long long)saved[i]);
+            }
+            printf("\n");
+
+            /* 调用系统调用分发器 */
+            handle_syscall(saved);
+
+            /* DEBUG: dump returned a0 */
+            printf("[dbg] after handle, saved[8]=%llx\n", (unsigned long long)saved[8]);
+
+            /* advance mepc to skip ecall */
+            w_mepc(r_mepc() + 4);
+            return;
+        }
+
         uint64 mepc = r_mepc();
         uint64 mtval = r_mtval();
         printf("Exception: mcause=%lx mepc=%lx mtval=%lx\n",
                (unsigned long)mcause, (unsigned long)mepc, (unsigned long)mtval);
-        // 若是ecall等需前进mepc，这里可按需+4
-        // w_mepc(mepc + 4);
-        // 为安全起见，停机
         while (1) { __asm__ volatile("wfi"); }
     }
 }
