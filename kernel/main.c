@@ -5,9 +5,11 @@
 #include "uart.h"
 #include "trap.h"
 #include "proc.h"   /* 新增：process APIs */
+#include "fs.h"     /* 新增：文件系统 demo */
 
-/* 新增：demo 初始化函数原型（定义在 kernel/syscall_test.c）*/
+/* 新增：demo 初始化函数原型（定义在 kernel/fs_demo.c）*/
 void syscall_demo_init(void);
+void fs_demo_init(void);   /* 新增 */
 
 static void cpu_task(void) {
     for (int i = 0; i < 5; i++) {
@@ -75,6 +77,8 @@ void main(void) {
     printf_color(COLOR_GREEN, "Paging enabled successfully!\n");
     printf("Now running on virtual addresses.\n");
 
+
+
     /* 启用中断与时钟（为调度器准备） */
     trap_init();
     printf("Timer interrupt initialized. ticks=%lu\n", (unsigned long)ticks);
@@ -84,7 +88,7 @@ void main(void) {
         printf("System ready. Entering idle loop...\n");
         uint64 last = ticks;
         /* 打印到达到一定 ticks 为止，按你的示例打印到 250 */
-        while (ticks < 50) {
+        while (ticks < 70) {
             if (ticks - last >= 10) {
                 last = ticks;
                 printf("[timer] ticks=%lu, mtime=%lu\n",
@@ -94,9 +98,12 @@ void main(void) {
             __asm__ volatile("wfi");
         }
         printf("Idle timer test complete. Proceeding to process creation...\n");
+        
+       
     }
 
     { 
+
         /* 实验5启动标识 */
         printf_color(COLOR_YELLOW, "\nExperiment 5: Process management & scheduling - START\n");
 
@@ -107,6 +114,10 @@ void main(void) {
 
         /* 创建系统调用演示进程（创建但演示任务会等待 ticks，保证输出在之前实验之后） */
         syscall_demo_init();
+        printf("实验七开始"); /* 新增：确认已执行 */
+        fs_init();        /* 新增：初始化简单内存文件系统 */
+        fs_print_info(); /* 新增：在主引导时显示 fs 初始状态 */
+        fs_demo_init();   /* 新增：在不改变前面输出的前提下添加文件系统演示 */
 
         /* 进入调度器（不会返回） */
         scheduler();

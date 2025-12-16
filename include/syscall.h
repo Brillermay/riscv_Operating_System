@@ -12,6 +12,10 @@
 #define SYS_wait    3
 #define SYS_kill    4
 #define SYS_write   5
+#define SYS_read    6
+#define SYS_fork    7
+#define SYS_open    8   // 新增：打开文件
+#define SYS_close   9   // 新增：关闭文件
 
 /* 由 trap 调用：saved 指向 kernelvec.S 保存的寄存器区 */
 void handle_syscall(uint64 *saved);

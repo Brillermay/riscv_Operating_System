@@ -44,6 +44,8 @@ struct proc {
     void *chan;               /* 等待通道，用于 sleep/wakeup */
     int killed;
     int xstate;               /* exit status */
+    int parent;               /* 父进程pid，用于fork/wait */
+    int fork_ret;             /* fork返回值：-1表示未fork，>=0表示fork返回值 */
 };
 
 extern struct proc proc[NPROC];
@@ -56,6 +58,7 @@ void scheduler(void);
 int create_process(void (*entry)(void));
 void exit_process(int status) __attribute__((noreturn));
 int wait_process(int *status);
+struct proc* allocproc(void);  /* 分配进程结构（供fork使用） */
 
 /* 进程内部调用 */
 struct proc* myproc(void);

@@ -25,8 +25,8 @@ struct proc* myproc(void) {
     return curproc;
 }
 
-/* 分配空闲进程结构 */
-static struct proc* allocproc(void) {
+/* 分配空闲进程结构（导出供fork使用） */
+struct proc* allocproc(void) {
     for (int i = 0; i < NPROC; i++) {
         if (proc[i].state == UNUSED) {
             struct proc *p = &proc[i];
@@ -51,6 +51,8 @@ static struct proc* allocproc(void) {
             p->chan = 0;
             p->killed = 0;
             p->xstate = 0;
+            p->parent = 0;
+            p->fork_ret = -1;  /* 初始化为-1，表示未fork */
             return p;
         }
     }
@@ -77,6 +79,8 @@ static void freeproc(struct proc *p) {
     p->entry = 0;
     p->chan = 0;
     p->killed = 0;
+    p->parent = 0;
+    p->fork_ret = -1;
 }
 
 /* 退出当前进程（不会返回） */
@@ -95,15 +99,19 @@ void exit_process(int status) {
     for(;;) { __asm__ volatile("wfi"); }
 }
 
-/* 等待任意子进程（简化：等待任意 ZOMBIE） */
+/* 等待子进程（只等待自己的子进程） */
 int wait_process(int *status) {
+    struct proc *p = myproc();
+    if (!p) return -1;
+    
     for (;;) {
         for (int i = 0; i < NPROC; i++) {
-            struct proc *p = &proc[i];
-            if (p->state == ZOMBIE) {
-                int pid = p->pid;
-                if (status) *status = p->xstate;
-                freeproc(p);
+            struct proc *child = &proc[i];
+            /* 只等待自己的子进程 */
+            if (child->state == ZOMBIE && child->parent == p->pid) {
+                int pid = child->pid;
+                if (status) *status = child->xstate;
+                freeproc(child);
                 return pid;
             }
         }
@@ -149,10 +157,28 @@ void scheduler(void) {
         for (int i = 0; i < NPROC; i++) {
             struct proc *p = &proc[i];
             if (p->state != RUNNABLE) continue;
+            
+            // 检查进程是否被标记为killed
+            if (p->killed) {
+                printf("scheduler: process %d was killed\n", p->pid);
+                p->state = ZOMBIE;
+                p->xstate = -1;  // 被kill的进程退出码为-1
+                freeproc(p);
+                continue;
+            }
+            
             curproc = p;
             p->state = RUNNING;
             /* 切换到进程上下文 */
             swtch(&scheduler_context, &p->context);
+            
+            // 切换回来后再次检查killed标志
+            if (p->killed && p->state != ZOMBIE) {
+                printf("scheduler: process %d killed during execution\n", p->pid);
+                p->state = ZOMBIE;
+                p->xstate = -1;
+            }
+            
             /* 返回后检查是否为 ZOMBIE 并回收 */
             if (p->state == ZOMBIE) {
                 freeproc(p);
